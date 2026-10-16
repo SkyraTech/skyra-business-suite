@@ -1,0 +1,161 @@
+# 01 --- Product Requirements Document
+
+**Version:** 1.1 \| **Status:** Draft for approval
+
+## 1. Vision
+
+Skyra Business Suite is a commercial, multi-tenant business platform.
+Customers can subscribe to a plan, select eligible modules/add-ons, and
+configure available features to match their organization. Shared
+capabilities should be reused across modules rather than rebuilt
+separately.
+
+## 2. Product principles
+
+1.  Security and tenant isolation are release blockers.
+2.  Deliver one complete module at a time, end-to-end.
+3.  The definition of a complete module includes UI, API, database
+    tables/migrations, authorization, Swagger/OpenAPI,
+    unit/integration/E2E tests, audit, documentation and quality gates.
+4.  Shared capabilities are implemented once and reused through stable
+    contracts.
+5.  Plan configuration and feature entitlements are dynamic, data-driven
+    and server-enforced.
+6.  A subscription grants entitlements; it does not replace identity,
+    permissions, organization membership or resource authorization.
+7.  Keep old `skyra-erp` read-only; do not copy its security weaknesses.
+8.  Angular must run without Zone.js; NestJS owns the API.
+9.  MCP/AI uses authorized application services, never direct database
+    access.
+
+## 3. Users
+
+-   Platform owner/operator: manages product catalog, plan templates,
+    platform settings and operational support.
+-   Customer organization owner: creates/manages organization, selects a
+    plan, configures allowed modules/add-ons, invites members and
+    manages credentials.
+-   Organization administrator: manages users, settings and entitlements
+    within assigned authority.
+-   Business users: access permitted modules/actions.
+-   Machine identities/AI agents: act only through scoped, expiring,
+    revocable credentials.
+
+## 4. Product structure
+
+### Shared Core Platform
+
+Identity, organization context, authorization, audit,
+subscription/entitlement engine, notifications, shared UI shell,
+document-generation engine, common export/print/download primitives and
+integration boundaries.
+
+### Standard shared business capabilities
+
+The product should be able to bundle common capabilities such as
+quotations, invoices and reusable document templates into a
+standard/core bundle available to customers of other modules where the
+selected plan says so. The final default bundle and pricing are
+configurable product decisions, not hardcoded rules.
+
+### Business modules
+
+-   Identity and organization onboarding/management
+-   Client/CRM management
+-   Quotations and invoicing
+-   Document templates/contracts
+-   Employee management
+-   Leave/attendance
+-   Payroll and payslips
+-   Expenses/payables
+-   Accounting and banking
+-   Projects and inventory
+-   Dashboards/reporting
+-   Integrations and MCP
+
+Payroll is a priority domain after identity/tenancy and required HR
+foundations. Payroll calculations must not be implemented until
+jurisdiction, salary rules, deductions, tax/statutory scope and approval
+requirements are specified.
+
+## 5. Authentication requirements
+
+-   Registration and sign-in using the approved local credential flow.
+-   Social sign-in through Google, LinkedIn and Facebook, subject to
+    provider app registration, current provider support and
+    configuration.
+-   Use a provider adapter strategy so adding/removing a provider does
+    not require rewriting core identity logic.
+-   Link provider identities safely to an existing user only with
+    verified identity and an explicit secure linking flow; never merge
+    accounts merely because unverified email strings match.
+-   First-time users complete organization onboarding: create an
+    organization, accept an invitation, or follow an approved join flow.
+-   Users may belong to multiple organizations if the membership model
+    permits; switching organization must revalidate context.
+-   Secure session lifecycle, logout/revocation, recovery, rate
+    limiting, audit and tenant-isolation tests are required.
+-   OAuth/OIDC callback URLs, client IDs/secrets, scopes and provider
+    setup are documented per environment; secrets are never committed.
+
+## 6. Organization and client requirements
+
+Organization management includes organization profile/settings,
+memberships, invitations, roles/permissions, organization context and
+audit. Client management (customer/contact/company records) is a
+separate business module, tenant-scoped and permissioned.
+
+## 7. Documents, invoicing and payroll
+
+-   Shared document engine supports reusable templates, branding,
+    variable binding, versioning, preview and PDF generation where
+    selected.
+-   Quotations/invoices use module-owned financial rules and lifecycle;
+    the document engine does not own tax/accounting rules.
+-   Contract templates and generated documents need controlled access
+    and traceability.
+-   Payslips are generated by Payroll from approved payroll results; the
+    shared document engine renders the approved payslip template. It
+    must not calculate salary or deductions.
+-   Financial amounts use decimal-safe representations. Tax, currency,
+    rounding, numbering and jurisdiction rules must be approved before
+    billing.
+-   Payroll statutory behavior must be jurisdiction-specific and
+    reviewed before release.
+
+## 8. Dynamic subscription and customization
+
+-   Platform owner can define plan templates and configure included
+    modules, shared capabilities, feature entitlements, quotas/limits,
+    add-ons and availability.
+-   Customer-facing purchase flow displays eligible choices and
+    resulting price before confirmation.
+-   Customers may choose permitted modules/add-ons and supported
+    customizations.
+-   Customer-specific configuration must be validated against plan
+    rules; it must not allow customers to grant themselves unavailable
+    entitlements.
+-   Entitlements are stored as versioned subscription state/snapshots,
+    with auditable changes and effective dates.
+-   Upgrade, downgrade, renewal, suspension, cancellation, grace
+    periods, prorating, tax and payment-provider behavior require
+    explicit product/payment decisions.
+-   Shared capabilities should be included by policy, not duplicated as
+    paid line items for each dependent module. The exact shared bundle
+    is configurable.
+-   Enforce entitlements in the API and background jobs; frontend
+    visibility is only a usability layer.
+
+## 9. Non-functional requirements
+
+Strict TypeScript; tenant isolation; auditable state changes; safe error
+handling; dependency/secret scanning; WCAG 2.2 AA proposed; structured
+logs; migration reproducibility; privacy/retention policy; backups and
+restore tests; measurable performance budgets.
+
+## 10. Success criteria
+
+Every delivered module has accepted requirements, tested UI/API/database
+behavior, authorization and tenant tests, OpenAPI docs, coverage gate
+compliance, migration validation, audit and operations notes. No known
+P0/P1 security issue may remain at release.
