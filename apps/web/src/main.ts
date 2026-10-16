@@ -1,20 +1,7 @@
-import { AppComponent } from './app/app.component.js';
+import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from './app/app.config.js';
+import { AppComponent } from './app/app.component.js';
 
-/**
- * Bootstrap entry point for Skyra Business Suite Web Client.
- * Demonstrates zoneless initialization contract without Zone.js.
- */
-export function bootstrapApplication(): AppComponent {
-  if (!appConfig.zoneless) {
-    throw new Error('Skyra Business Suite must run in zoneless mode without Zone.js.');
-  }
-
-  const app = new AppComponent();
-  return app;
-}
-
-// Execute bootstrap in browser context
-if (typeof window !== 'undefined') {
-  bootstrapApplication();
-}
+bootstrapApplication(AppComponent, appConfig).catch((err: unknown) => {
+  console.error('Failed to bootstrap Skyra Business Suite Web Client:', err);
+});

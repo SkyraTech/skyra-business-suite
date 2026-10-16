@@ -22,15 +22,14 @@ defense in depth but does not replace application checks.
 
 ## Conceptual Identity/Organization entities
 
--   `users`
--   `external_identities` (provider, provider subject, user link,
-    verified metadata; never store provider client secret here)
--   `sessions` / refresh token family metadata
--   `organizations`
--   `organization_memberships`
--   `organization_invitations`
--   roles, permissions, assignments
--   `audit_events`
+-   `users`: `id`, `email` (unique), `password_hash`, `full_name`, `email_verified`, `created_at`, `updated_at`.
+-   `sessions`: `id`, `user_id`, `token_hash` (unique, SHA-256), `csrf_secret` (cryptographic secret), `expires_at`, `created_at`, `last_active_at`. Raw session secrets are never stored.
+-   `email_verification_tokens`: `id`, `user_id`, `token_hash` (unique, SHA-256), `expires_at`, `redeemed_at`, `created_at`. Strictly single-use.
+-   `password_reset_tokens`: `id`, `user_id`, `token_hash` (unique, SHA-256), `expires_at`, `redeemed_at`, `created_at`. Strictly single-use.
+-   `organizations`: `id`, `name`, `slug` (unique), `status` (`ACTIVE | SUSPENDED`), `created_at`, `updated_at`.
+-   `organization_memberships`: `id`, `organization_id`, `user_id`, `role` (`OWNER | ADMIN | MEMBER`), `is_active`, `created_at`, `updated_at`. Composite unique on `[organization_id, user_id]`.
+-   `audit_events`: `id`, `actor_id`, `organization_id`, `action`, `resource_type`, `resource_id`, `outcome`, `ip_address`, `created_at`.
+-   `external_identities`: (Deferred to future social login phase). Raw provider tokens never stored.
 
 ## Subscription catalog and entitlements
 

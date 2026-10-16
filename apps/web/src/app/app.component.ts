@@ -1,15 +1,12 @@
-import { appConfig } from './app.config.js';
+import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 
-/**
- * Root Application Component shell.
- * Formatted as a TypeScript class conforming to Angular Standalone Component baseline.
- */
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet],
+  template: ` <router-outlet></router-outlet> `,
+})
 export class AppComponent {
-  readonly title = appConfig.appName;
-  readonly version = appConfig.version;
-  readonly isZoneless = appConfig.zoneless;
-
-  getAppInfo(): string {
-    return `${this.title} v${this.version} (Zoneless: ${this.isZoneless})`;
-  }
+  readonly title = 'Skyra Business Suite';
 }

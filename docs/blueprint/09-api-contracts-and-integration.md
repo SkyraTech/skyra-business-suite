@@ -8,25 +8,38 @@ NestJS REST API, explicit validated DTOs, OpenAPI/Swagger, safe error
 contract, bounded pagination and versioned public routes (proposed
 `/api/v1`). API contract is part of every module's acceptance criteria.
 
-## Identity/social endpoints (illustrative only)
+## Module 1 Identity & Organization Onboarding Endpoints
 
 ``` text
-POST /api/v1/auth/register
-POST /api/v1/auth/login
-POST /api/v1/auth/logout
-POST /api/v1/auth/recovery/request
-POST /api/v1/auth/recovery/complete
-GET  /api/v1/auth/providers
-GET  /api/v1/auth/{provider}/start
-GET  /api/v1/auth/{provider}/callback
-POST /api/v1/organizations/onboarding
-POST /api/v1/organizations/{organizationId}/invitations
-POST /api/v1/invitations/{invitationToken}/accept
+# Public Authentication Endpoints (Rate Limited, No Session Required)
+POST /api/v1/auth/register               # Register user account, emits verification token
+POST /api/v1/auth/verify-email           # Redeem single-use verification token
+POST /api/v1/auth/login                  # Email/password authentication, sets sb_session & sb_csrf cookies
+POST /api/v1/auth/forgot-password        # Generic 200 response, generates single-use reset token
+POST /api/v1/auth/reset-password         # Redeem reset token, revokes all active sessions
+
+# Authenticated Session Endpoints (Session Cookie or Bearer Header Required)
+GET  /api/v1/auth/me                     # Get authenticated user profile & memberships
+POST /api/v1/auth/logout                 # Revoke active session, clears cookies
+
+# CSRF Token Endpoint (Browser Client)
+GET  /api/v1/auth/csrf                   # Generates/returns CSRF token for cookie clients
+
+# Organization & Tenancy Endpoints (Session Required)
+POST /api/v1/organizations               # Create organization + OWNER membership (Atomic Transaction)
+GET  /api/v1/organizations               # List organizations user belongs to
+POST /api/v1/organizations/switch        # Switch active organization context (Validates membership)
 ```
 
-Exact routes depend on selected auth library and provider callback
-requirements. OAuth redirects/callbacks need documented sequence
-diagrams and configuration notes as well as OpenAPI where applicable.
+### Security Headers and Cookies Contract
+* **Cookies:**
+  * `sb_session`: `HttpOnly; Secure; SameSite=Lax; Path=/` (Raw 32-byte secret; database stores SHA-256 hash).
+  * `sb_csrf`: `SameSite=Lax; Path=/` (Exposed to JavaScript for `X-CSRF-Token` header transmission).
+* **Headers:**
+  * `X-CSRF-Token`: Mandatory on state-changing cookie requests (`POST`, `PUT`, `PATCH`, `DELETE`).
+  * `X-Skyra-Org-ID`: Indicates targeted tenant context for tenant-scoped operations; verified server-side against DB membership.
+  * `Authorization`: `Bearer <rawToken>` for machine clients. Takes precedence over cookies if both provided.
+* **Social Login (Google, LinkedIn, Facebook):** Explicitly deferred to future release.
 
 ## Subscription/entitlement endpoints (illustrative)
 

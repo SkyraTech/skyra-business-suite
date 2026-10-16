@@ -35,13 +35,19 @@ financial operations and unsafe AI tools.
 -   Apply rate limits, safe errors, session expiry/revocation and
     security audit.
 
-## Human sessions
+## Human sessions & Token Security
 
-Use short-lived access credentials or secure server-side sessions. If
-refresh tokens are used, rotate and detect reuse where supported. Prefer
-Secure, HttpOnly, SameSite cookies when suitable and protect
-state-changing requests against CSRF. Do not store long-lived secrets in
-localStorage. Hash passwords with an approved algorithm.
+-   **Session Tokens:** Generated using `crypto.randomBytes(32)` (256-bit entropy).
+-   **Storage at Rest:** Only SHA-256 cryptographic hashes (`tokenHash`) are stored in the database; raw session tokens are never persisted.
+-   **Lookup & Rotation:** Incoming session tokens are hashed with SHA-256 to query active sessions. Sessions carry an expiration timestamp and are sliding-window extended or rotated upon privilege change.
+-   **Dual Authentication Contract:**
+    * **Web Browser Client:** Transmitted via secure `HttpOnly`, `SameSite=Lax`, `Secure` cookies (`sb_session`).
+    * **Machine / Mobile / MCP Clients:** Transmitted via `Authorization: Bearer <token>` header. If both are supplied, the `Authorization` header takes precedence for explicit API requests.
+-   **CSRF Protection:** State-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) authenticating via cookie must supply an `X-CSRF-Token` header matching the session's cryptographically bound CSRF secret. SameSite cookies are treated as defense-in-depth, not the sole barrier.
+-   **Lifecycle & Revocation:** Session tokens can be explicitly revoked at logout (`DELETE /api/v1/auth/logout`). Password reset operations immediately revoke **all** active sessions for that user.
+-   **Single-Use Recovery Tokens:** Email verification and password reset tokens are cryptographically random, stored as SHA-256 hashes, strictly single-use, and redeemed conditionally inside atomic transactions to prevent race conditions. Password reset tokens expire in 1 hour; email verification tokens in 24 hours.
+-   **Password Hashing:** Passwords hashed with Argon2id (`memoryCost: 65536, timeCost: 3, parallelism: 4`).
+-   **Abuse Prevention:** Rate limiting on auth endpoints with trusted proxy header resolution, timing-safe authentication errors ("Invalid email or password"), and generic responses on password recovery to prevent account enumeration.
 
 ## Machine/API credentials
 

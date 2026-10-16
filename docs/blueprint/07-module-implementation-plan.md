@@ -14,29 +14,21 @@ audit Skyra Platform packages and record compatibility. Keep `skyra-erp`
 read-only. **Exit:** approved architecture decisions and Platform
 consumption matrix.
 
-## Module 1 --- Identity, Registration, Social Login and Organization Onboarding
+## Module 1 --- Identity, Authentication, Security Controls & Organization Onboarding
 
-This is the first complete product module. - UI: sign-in, registration,
-password recovery, provider buttons, callback/error states, session
-states, first-login organization create/join, invitation acceptance,
-organization selection/switching. - Providers: Google, LinkedIn,
-Facebook via provider adapters; exact flow depends on provider support
-and configuration. Use test identities/mocks in automated tests. - API:
-auth endpoints/callback handlers, provider identity linking,
-session/logout/revocation, recovery/rate limits, organization
-onboarding/invitation operations. - Database: users, external
-identities, sessions/token-family metadata, organizations, memberships,
-invitations and audit events; migrations and test seeds. - Security:
-state/nonce/redirect validation as applicable, verified identity
-handling, no email-only account merging, tenant checks, rate limits,
-secrets redaction. - Swagger/OpenAPI: document all API endpoints, auth
-schemes, errors, callback/flow notes and permission requirements. OAuth
-provider callback behavior may need supplemental sequence diagrams
-because provider redirects are not ordinary JSON APIs. - Tests: unit,
-integration, E2E, security, accessibility, migration and coverage gates.
-**Exit:** new user can register/sign in using supported methods, create
-or join an organization, access only authorized organization data, and
-CI/security checks pass.
+This is the first complete product module.
+- **Scope:** Email and password authentication (Argon2id), secure session management, token recovery, and atomic organization onboarding. Social login (Google, LinkedIn, Facebook) is explicitly deferred until provider credentials and redirect endpoints are provisioned.
+- **Security Invariants:**
+  * Session tokens: cryptographically random 32-byte tokens; SHA-256 hashed at rest; HttpOnly/Secure/SameSite cookies for web browser sessions; Authorization header for machine clients.
+  * CSRF defense: Double-submit / synchronizer token (`X-CSRF-Token` header) mandatory for state-changing requests using cookie authentication.
+  * Tenant isolation: Organization context derived strictly from authenticated user ID and verified DB membership (`OrganizationMembership`). Client-supplied organization IDs are never trusted as authorization.
+  * Token lifecycle: Single-use, expiring, hashed at rest (`tokenHash`), conditional atomic update to eliminate race conditions. Password reset immediately revokes all user sessions.
+  * Abuse mitigation: Rate limiting with trusted proxy support, timing-safe auth errors ("Invalid email or password"), generic password recovery responses (no account enumeration).
+- **UI:** Sign-in, registration, email verification notice, password recovery, session states, organization onboarding wizard, organization selection and switching. Built with Angular 22 Standalone Zoneless components and reactive Signals.
+- **API:** REST `/api/v1/auth/*` and `/api/v1/organizations/*` with strict class-validator DTOs and OpenAPI documentation.
+- **Database:** Prisma schema defining `User`, `Session`, `EmailVerificationToken`, `PasswordResetToken`, `Organization`, `OrganizationMembership`. Atomic transactions for onboarding and token redemption.
+- **Tests:** Unit, integration, security/cross-tenant, concurrency, and E2E journeys.
+- **Exit:** New user registers, verifies email, authenticates securely, creates organization with atomic OWNER membership, switches tenant context, passes all cross-tenant negative tests, with CI/build/lint gates at 100% pass.
 
 ## Module 2 --- Organization Management
 

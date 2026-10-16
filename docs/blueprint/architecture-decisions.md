@@ -106,12 +106,17 @@
 
 ---
 
-## ADR-010: Session Transport & Token Security
-* **Status:** `REQUIRES_REVIEW`
-* **Context:** Securing browser sessions and API requests.
-* **Decision:** Use secure, `HttpOnly`, `SameSite=Lax`, `Secure` cookies for browser web sessions, paired with CSRF protection tokens for mutating requests. For machine clients and MCP, use expiring JWT bearer tokens passed via `Authorization` headers.
-* **Rationale:** Protects session tokens from XSS theft while providing standard authorization headers for machine clients.
-* **Consequences:** Frontend HTTP client must configure `withCredentials: true`.
+## ADR-010: Session Transport, Token Hashing & CSRF Defense
+* **Status:** `ACCEPTED`
+* **Context:** Securing browser sessions and API requests against token theft, session hijacking, race conditions, and cross-site request forgery.
+* **Decision:**
+  1. **Session Storage at Rest:** Store only SHA-256 hashes of opaque session tokens in the database; raw tokens are never persisted.
+  2. **Web Browser Sessions:** Use `HttpOnly`, `SameSite=Lax`, `Secure` (in production) cookies (`sb_session`).
+  3. **CSRF Protection:** State-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) authenticated via cookie must include an `X-CSRF-Token` header validated against the session's CSRF secret.
+  4. **Machine & MCP Clients:** Support `Authorization: Bearer <rawToken>` with precedence over cookies if both are present.
+  5. **Token Lifecycle:** Email verification and password reset tokens are single-use, expiring, hashed with SHA-256 at rest, and redeemed conditionally inside transactions. Password reset immediately revokes all active sessions for the user.
+* **Rationale:** Protects session tokens from XSS theft, mitigates database breach token extraction, eliminates CSRF vectors beyond simple SameSite heuristics, and ensures clean multi-client compatibility.
+* **Consequences:** Frontend HTTP client must configure `withCredentials: true` and intercept mutating requests to attach the `X-CSRF-Token` header.
 
 ---
 

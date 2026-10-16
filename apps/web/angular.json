@@ -18,7 +18,8 @@
           "options": {
             "browser": "src/main.ts",
             "index": "src/index.html",
-            "tsConfig": "tsconfig.json"
+            "tsConfig": "tsconfig.json",
+            "styles": ["src/styles.css"]
           },
           "configurations": {
             "production": {

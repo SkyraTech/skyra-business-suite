@@ -35,17 +35,34 @@ The security audit of `skyra-erp` uncovered critical vulnerabilities that must b
 ## 3. Core Security Controls Specification
 
 ### 3.1 Authentication & Session Management
-* **Web Sessions:**
-  * Transmitted via encrypted `HttpOnly`, `Secure`, `SameSite=Lax` cookies.
-  * Cookie flags: `HttpOnly` (mitigates XSS token theft), `Secure` (HTTPS only), `SameSite=Lax` (protects against CSRF).
+* **Web Sessions (Browser Client):**
+  * Generated with 32 bytes of cryptographically secure random bytes (`crypto.randomBytes(32)`).
+  * Stored in the database **only as a SHA-256 hash** (`tokenHash`); raw session tokens are never persisted in the database or logged.
+  * Transmitted to the browser via an `HttpOnly`, `Secure` (in production), `SameSite=Lax` cookie named `sb_session`.
+  * Accompanied by a cryptographically random CSRF token (`sb_csrf`) or returned in session metadata.
+* **CSRF Defense (Synchronizer / Header Verification):**
+  * SameSite cookies are a baseline defense, but not sufficient on their own.
+  * All state-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) authenticated via cookie **must** supply an `X-CSRF-Token` header.
+  * The API validates that `X-CSRF-Token` matches the session's active CSRF secret.
+  * Requests that fail CSRF verification are immediately rejected with `403 Forbidden`.
 * **Machine & Agent (MCP) Credentials:**
-  * Expiring JWT tokens passed via `Authorization: Bearer <token>` headers.
-  * Tokens must carry `jti` (unique token ID), `sub` (actor ID), `org` (authorized tenant scope), and short expiration (`exp` <= 1 hour).
-* **Brute-Force & Rate Limiting:**
-  * `@nestjs/throttler` configured on all authentication endpoints:
-    * Login attempts: Max 5 attempts per IP per 5 minutes.
-    * Registration: Max 3 attempts per IP per hour.
-    * General API: Max 100 requests per minute per IP.
+  * Passed via `Authorization: Bearer <token>` headers.
+  * Machine clients bypassing cookies do not require CSRF headers because cross-origin browsers do not automatically send custom `Authorization` headers.
+  * **Precedence Rule:** If both cookie and `Authorization: Bearer` header are present on a request, the `Authorization` header takes precedence.
+* **Single-Use Recovery Tokens (Email Verification & Password Reset):**
+  * Generated with 32 cryptographically random bytes.
+  * Persisted in PostgreSQL as SHA-256 hashes (`tokenHash`).
+  * Token redemption is strictly atomic using conditional updates (`WHERE tokenHash = $1 AND redeemedAt IS NULL AND expiresAt > NOW()`) inside database transactions to eliminate race conditions and double-spending.
+  * Successful password reset immediately revokes **all** active sessions for the user (`DELETE FROM sessions WHERE userId = $1`).
+* **Brute-Force & Abuse Mitigation:**
+  * Password hashing uses Argon2id (`memoryCost: 65536, timeCost: 3, parallelism: 4`).
+  * Generic responses on password recovery (`200 OK` regardless of whether the email exists) to eliminate account enumeration vectors.
+  * Timing-safe authentication failure errors (`401 Unauthorized: Invalid email or password`).
+  * Rate limiting configured on all authentication routes:
+    * Login: 5 requests / 5 minutes / IP.
+    * Registration: 3 requests / 1 hour / IP.
+    * Password recovery: 3 requests / 1 hour / IP.
+  * Trusted proxy configuration enabled for accurate client IP resolution behind reverse proxies.
 
 ### 3.2 Tenant Isolation Guards & Request Context
 Every incoming API request passes through a multi-stage tenant resolution interceptor:
